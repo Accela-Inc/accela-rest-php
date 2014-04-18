@@ -154,20 +154,10 @@
             "time": "2014-02-11 13:52:09"
         }
     ],
-    "packages-dev": [
-
-    ],
-    "aliases": [
-
-    ],
+    "packages-dev": [],
+    "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [
-
-    ],
-    "platform": [
-
-    ],
-    "platform-dev": [
-
-    ]
+    "stability-flags": [],
+    "platform": [],
+    "platform-dev": []
 }

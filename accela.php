@@ -5,7 +5,91 @@ require 'vendor/autoload.php';
 use Guzzle\Http\Client;
 
 /**
- * Base class.
+ * Class to obtain access credentials for using the Accela API.
+ */
+class Authorize {
+
+	// Endpoints used to obtain authorization code and access token.
+	const AUTH_ENDPOINT = 'https://auth.accela.com/oauth2/authorize';
+	const ACCESS_TOKEN_ENDPOINT = 'https://apis.accela.com/oauth2/token';
+
+	private $response_type = 'code';
+	// The application ID (provisioned when app is created).
+	private $app_id;
+	// The application secret (provisioned when app is created).
+	private $app_secret;
+	// URI that the authorization server redirects back to the client with an authorization code.
+	private $redirect_uri;
+	// The Accela environment name.
+	private $environment;
+	// The namr of the agency defined in the admin portal.
+	private $agency_name;
+	// The scope of the respurces that the client requests.
+	private $scope;
+	// Value that the client uses for maintaining the state between the request and callback. 
+	private $state;
+
+	/**
+	 * Class constructor.
+	 */
+	public function __construct($app_id, $app_secret, $redirect_uri, $environment, $agency_name, $scope, $state=null) {
+		$this->app_id = $app_id;
+		$this->app_secret = $app_secret;
+		$this->client_id = $client_id;
+		$this->redirect_uri = $redirect_uri;
+		$this->environment = $environment;
+		$this->agency_name = $agency_name;
+		$this->scope = $scope;
+		$this->state = $state;
+	}
+
+	/**
+	 * Obtain an authorization URL.
+	 */
+	public function getAuthorizationURL() {
+		$url = self::AUTH_ENDPOINT . "?client_id=" . $this->app_id;
+		$url .= "&agency_name=" . $this->agency_name;
+		$url .= "&environment=" . $this->environment;
+		$url .= "&redirect_uri=" . $this->redirect_uri;
+		$url .= "&state=" . $this->state;
+		$url .= "&scope=" . $this->scope;
+		$url .= "&response_type=" . $this->response_type;
+		return $url;
+	}
+
+	/**
+	 * Make request for an access token.
+	 */
+	public function getAccessToken($code) {
+
+		$body = array(
+		    'grant_type' => 'authorization_code',
+		    'client_id'   => $this->app_id,
+		    'client_secret' => $this->app_secret,
+		    'redirect_uri' => $this->redirect_uri,
+		    'code' => $code);
+		$client = new Client();
+		$request = $client->post(self::ACCESS_TOKEN_ENDPOINT, array(), $body);
+		$request->setHeader('x-accela-appid', $this->app_id);
+		return $request->send();
+	}
+
+	/**
+	 * Refresh an existing access token.
+	 */
+	public function refreshAccessToken() {
+
+	}
+
+	/**
+	 * Class destructor.
+	 */
+	public function __destruct() {}
+
+}
+
+/**
+ * Base class for Accela API classes.
  */ 
 class AccelaBase {
 
@@ -26,7 +110,7 @@ class AccelaBase {
 	private $client;
 
 	/**
-	 * Class conrtuctor.
+	 * Class constructor.
 	 */
 	protected function __construct($app_id, $app_secret, $access_token, $environment, $agency) {
 		$this->app_id = $app_id;
@@ -38,7 +122,7 @@ class AccelaBase {
 	}
 
 	/**
-	 * Methods to send calls to Accela API.
+	 * Method to send GET requests to Accela API.
 	 */
 	protected function sendRequest($path, Array $params=null, $auth_type, $debug=false, $exceptions=true) {
 		$request = $this->client->get($path, array(), 
@@ -51,7 +135,20 @@ class AccelaBase {
 		return $response->getBody();
 	}
 
+	/**
+	 * Method to send POST requests to Accela API.
+	 */ 
 	protected function sendPost() {}
+	/**
+	 * Method to send PUT requests to Accela API.
+	 */	
+
+	protected function sendPut() {}
+	/**
+	 * Method to send DELETE requests to Accela API.
+	 */
+
+	protected function sendDelete() {}
 
 	/**
 	 * Class destructor.
@@ -98,6 +195,9 @@ class AccelaBase {
 
 }
 
+/**
+ * Utility class for setting autoirzation type.
+ */
 class AuthType {
 	public static $AccessToken = 'AccessToken';
 	public static $AppCredentials = 'AppCredentials';
@@ -109,10 +209,10 @@ class Agencies extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getAgency($path, $auth_type, $params) {
+	public function getAgency($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getAgencyLogo($path, $auth_type, $params) {
+	public function getAgencyLogo($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -125,7 +225,7 @@ class AppSettings extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getAppSettings($path, $auth_type, $params) {
+	public function getAppSettings($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -138,7 +238,7 @@ class GISSettings extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getAppSettings($path, $auth_type, $params) {
+	public function getAppSettings($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -152,7 +252,7 @@ class GeoCoding extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function reverseGeocodeAddres($path, $auth_type, $params) {
+	public function reverseGeocodeAddres($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -180,13 +280,13 @@ class Addresses extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function describeStreetPrefixes($path, $auth_type, $params) {
+	public function describeStreetPrefixes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function searchAddress($path, $auth_type, $params) {
+	public function searchAddress($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getAddress($path, $auth_type, $params) {
+	public function getAddress($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -203,16 +303,16 @@ class Parcels extends AccelaBase {
 	public function searchParcels() {
 		throw new Exception('Method not implemented.');
 	}
-	public function simpleSearchParcels($path, $auth_type, $params) {
+	public function simpleSearchParcels($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getParcelsByIds($path, $auth_type, $params) {
+	public function getParcelsByIds($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getParcelOwners($path, $auth_type, $params) {
+	public function getParcelOwners($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getParcelAddresses($path, $auth_type, $params) {
+	public function getParcelAddresses($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -226,7 +326,7 @@ class Owners extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function searchOwners($path, $auth_type, $params) {
+	public function searchOwners($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -240,34 +340,34 @@ class Assets extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function describeAssetTypes($path, $auth_type, $params) {
+	public function describeAssetTypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeAssetStatuses($path, $auth_type, $params) {
+	public function describeAssetStatuses($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeAssetUniTypes($path, $auth_type, $params) {
+	public function describeAssetUniTypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeAssetASI($path, $auth_type, $params) {
+	public function describeAssetASI($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeAssetASIT($path, $auth_type, $params) {
+	public function describeAssetASIT($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getAssetCATypes($path, $auth_type, $params) {
+	public function getAssetCATypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getAssets($path, $auth_type, $params) {
+	public function getAssets($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}	 
-	public function getAssetAttributeTables($path, $auth_type, $params) {
+	public function getAssetAttributeTables($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}	 
-	public function getAssetAttributes($path, $auth_type, $params) {
+	public function getAssetAttributes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getAssetConditionAssessments($path, $auth_type, $params) {
+	public function getAssetConditionAssessments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function createAsset() {
@@ -287,10 +387,10 @@ class Contacts extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function describeContactTypes($path, $auth_type, $params) {
+	public function describeContactTypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function simpleSearchContacts($path, $auth_type, $params) {
+	public function simpleSearchContacts($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function advancedSearchContacts() {
@@ -307,13 +407,13 @@ class Professionals extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getProfessionalsByID($path, $auth_type, $params) {
+	public function getProfessionalsByID($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getProfessionals($path, $auth_type, $params) {
+	public function getProfessionals($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getProfessionalRecords($path, $auth_type, $params) {
+	public function getProfessionalRecords($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function searchprofessionals() {
@@ -330,19 +430,19 @@ class Documents extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function describeDocumentTypes($path, $auth_type, $params) {
+	public function describeDocumentTypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function downloadAttachment($path, $auth_type, $params) {
+	public function downloadAttachment($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function downloadImageThumbnail($path, $auth_type, $params) {
+	public function downloadImageThumbnail($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function downloaddocument($path, $auth_type, $params) {
+	public function downloaddocument($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getDocument($path, $auth_type, $params) {
+	public function getDocument($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -356,10 +456,10 @@ class StandardComments extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getStandardCommentGroups($path, $auth_type, $params) {
+	public function getStandardCommentGroups($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getStandardComments($path, $auth_type, $params) {
+	public function getStandardComments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -373,34 +473,34 @@ class Records extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function describeRecordType($path, $auth_type, $params) {
+	public function describeRecordType($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeWorkOrderTemplates($path, $auth_type, $params) {
+	public function describeWorkOrderTemplates($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeASI($path, $auth_type, $params) {
+	public function describeASI($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeASIDrilldown($path, $auth_type, $params) {
+	public function describeASIDrilldown($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeASIT($path, $auth_type, $params) {
+	public function describeASIT($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeASITDrilldown($path, $auth_type, $params) {
+	public function describeASITDrilldown($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describePriorities($path, $auth_type, $params) {
+	public function describePriorities($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeRecordStatus($path, $auth_type, $params) {
+	public function describeRecordStatus($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeWorkOrderTaskUnit($path, $auth_type, $params) {
+	public function describeWorkOrderTaskUnit($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function simpleSearchRecords($path, $auth_type, $params) {
+	public function simpleSearchRecords($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function advancedSearchRecords() {
@@ -409,67 +509,67 @@ class Records extends AccelaBase {
 	public function searchRecordsByCoordinates() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getDrilldowns($path, $auth_type, $params) {
+	public function getDrilldowns($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordASIDrilldown($path, $auth_type, $params) {
+	public function getRecordASIDrilldown($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsASI($path, $auth_type, $params) {
+	public function getRecordsASI($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsASIT($path, $auth_type, $params) {
+	public function getRecordsASIT($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getAddressesForRecord($path, $auth_type, $params) {
+	public function getAddressesForRecord($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsAssets($path, $auth_type, $params) {
+	public function getRecordsAssets($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsComments($path, $auth_type, $params) {
+	public function getRecordsComments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsConditions($path, $auth_type, $params) {
+	public function getRecordsConditions($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsContacts($path, $auth_type, $params) {
+	public function getRecordsContacts($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsDocuments($path, $auth_type, $params) {
+	public function getRecordsDocuments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsInspections($path, $auth_type, $params) {
+	public function getRecordsInspections($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsPlottableLocation($path, $auth_type, $params) {
+	public function getRecordsPlottableLocation($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsOwners($path, $auth_type, $params) {
+	public function getRecordsOwners($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsParcels($path, $auth_type, $params) {
+	public function getRecordsParcels($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsWorkflowTasks($path, $auth_type, $params) {
+	public function getRecordsWorkflowTasks($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsParts($path, $auth_type, $params) {
+	public function getRecordsParts($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsCosts($path, $auth_type, $params) {
+	public function getRecordsCosts($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsWorkorderTasks($path, $auth_type, $params) {
+	public function getRecordsWorkorderTasks($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRelatedRecords($path, $auth_type, $params) {
+	public function getRelatedRecords($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getUserComments($path, $auth_type, $params) {
+	public function getUserComments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getUservotes($path, $auth_type, $params) {
+	public function getUservotes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function createRecord() {
@@ -481,7 +581,7 @@ class Records extends AccelaBase {
 	public function uploadDocuments() {
 		throw new Exception('Method not implemented.');
 	}
-	public function updateRecord($path, $auth_type, $params) {
+	public function updateRecord($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function updateWorkflowTask() {
@@ -490,28 +590,28 @@ class Records extends AccelaBase {
 	public function makeVotes() {
 		throw new Exception('Method not implemented.');
 	}
-	public function describeRecordTypes($path, $auth_type, $params) {
+	public function describeRecordTypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsConditionSummary($path, $auth_type, $params) {
+	public function getRecordsConditionSummary($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsContactSummary($path, $auth_type, $params) {
+	public function getRecordsContactSummary($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsFeeSummary($path, $auth_type, $params) {
+	public function getRecordsFeeSummary($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsInspectionSummary($path, $auth_type, $params) {
+	public function getRecordsInspectionSummary($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsProjectInformations($path, $auth_type, $params) {
+	public function getRecordsProjectInformations($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsWorkflowSummary($path, $auth_type, $params) {
+	public function getRecordsWorkflowSummary($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getUserActivitiesSummary($path, $auth_type, $params) {
+	public function getUserActivitiesSummary($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function createCitizenRecord() {
@@ -526,49 +626,49 @@ class Records extends AccelaBase {
 	public function deleteRecordDocuments() {
 		throw new Exception('Method not implemented.');
 	}
-	public function downloadDocument($path, $auth_type, $params) {
+	public function downloadDocument($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getDocument($path, $auth_type, $params) {
+	public function getDocument($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getMyRecords($path, $auth_type, $params) {
+	public function getMyRecords($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecord($path, $auth_type, $params) {
+	public function getRecord($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordContacts($path, $auth_type, $params) {
+	public function getRecordContacts($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordDocuments($path, $auth_type, $params) {
+	public function getRecordDocuments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordFees($path, $auth_type, $params) {
+	public function getRecordFees($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordOwners($path, $auth_type, $params) {
+	public function getRecordOwners($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordParcels($path, $auth_type, $params) {
+	public function getRecordParcels($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordProfessionals($path, $auth_type, $params) {
+	public function getRecordProfessionals($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecords($path, $auth_type, $params) {
+	public function getRecords($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordsAddresses($path, $auth_type, $params) {
+	public function getRecordsAddresses($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function searchRecords() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getRecordConditions($path, $auth_type, $params) {
+	public function getRecordConditions($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getRecordCondition($path, $auth_type, $params) {
+	public function getRecordCondition($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function createRecordConditions() {
@@ -591,22 +691,22 @@ class Inspections extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function describeInspectionGroups($path, $auth_type, $params) {
+	public function describeInspectionGroups($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeInspectionTypes($path, $auth_type, $params) {
+	public function describeInspectionTypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeInspectionChecklists($path, $auth_type, $params) {
+	public function describeInspectionChecklists($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function simpleSearchInspection($path, $auth_type, $params) {
+	public function simpleSearchInspection($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function advancedSearchInspections() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getSingleInspection($path, $auth_type, $params) {
+	public function getSingleInspection($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function scheduleInspection() {
@@ -618,19 +718,19 @@ class Inspections extends AccelaBase {
 	public function rescheduleAgencyInspection() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getInspectors($path, $auth_type, $params) {
+	public function getInspectors($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getsthechecklistitems($path, $auth_type, $params) {
+	public function getsthechecklistitems($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getsthechecklists($path, $auth_type, $params) {
+	public function getsthechecklists($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function cancelInspection() {
 		throw new Exception('Method not implemented.');
 	}
-	public function availableInspectionDates($path, $auth_type, $params) {
+	public function availableInspectionDates($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function createInspection() {
@@ -639,31 +739,31 @@ class Inspections extends AccelaBase {
 	public function deleteInspectionDocuments() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getChecklistsForSpecificInspection($path, $auth_type, $params) {
+	public function getChecklistsForSpecificInspection($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspectionDocument($path, $auth_type, $params) {
+	public function getInspectionDocument($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspectionGrades($path, $auth_type, $params) {
+	public function getInspectionGrades($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspectionStatus($path, $auth_type, $params) {
+	public function getInspectionStatus($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspectionTypesByGroupCode($path, $auth_type, $params) {
+	public function getInspectionTypesByGroupCode($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspectionTypesByIds($path, $auth_type, $params) {
+	public function getInspectionTypesByIds($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspectionTypesByRecordIds($path, $auth_type, $params) {
+	public function getInspectionTypesByRecordIds($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspectionsByIds($path, $auth_type, $params) {
+	public function getInspectionsByIds($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getSpecificInspectionChecklistitems($path, $auth_type, $params) {
+	public function getSpecificInspectionChecklistitems($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function rescheduleInspection() {
@@ -687,16 +787,16 @@ class Inspections extends AccelaBase {
 	public function deleteChecklists() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getChecklistItemDocuments($path, $auth_type, $params) {
+	public function getChecklistItemDocuments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getReferenceChecklistByGroupId($path, $auth_type, $params) {
+	public function getReferenceChecklistByGroupId($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getReferenceChecklistGroups($path, $auth_type, $params) {
+	public function getReferenceChecklistGroups($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getReferenceChecklists($path, $auth_type, $params) {
+	public function getReferenceChecklists($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function updateCheckListItems() {
@@ -716,19 +816,19 @@ class Assessments extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function describeAssessmentAttributes($path, $auth_type, $params) {
+	public function describeAssessmentAttributes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function describeAssessmentObservation($path, $auth_type, $params) {
+	public function describeAssessmentObservation($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function simpleSearchAssessment($path, $auth_type, $params) {
+	public function simpleSearchAssessment($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function advancedSearchAssessments() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getAssessmentAttributesDetail($path, $auth_type, $params) {
+	public function getAssessmentAttributesDetail($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function createAssessment() {
@@ -752,7 +852,7 @@ class Assessments extends AccelaBase {
 	public function updateAssessmentObservations() {
 		throw new Exception('Method not implemented.');
 	}
-	public function getAssessmentObservationDetails($path, $auth_type, $params) {
+	public function getAssessmentObservationDetails($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -766,7 +866,7 @@ class Modules extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getModules($path, $auth_type, $params) {
+	public function getModules($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -780,7 +880,7 @@ class Users extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getUserProfile($path, $auth_type, $params) {
+	public function getUserProfile($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -794,7 +894,7 @@ class Departments extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getDepartments($path, $auth_type, $params) {
+	public function getDepartments($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -808,10 +908,10 @@ class Staff extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getDepartmentStaff($path, $auth_type, $params) {
+	public function getDepartmentStaff($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getDepartmentStaffs($path, $auth_type, $params) {
+	public function getDepartmentStaffs($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -825,10 +925,10 @@ class Inspector extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getUserInspectorProfile	($path, $auth_type, $params) {
+	public function getUserInspectorProfile	($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getInspector($path, $auth_type, $params) {
+	public function getInspector($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -842,16 +942,16 @@ class Reports extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getReportDefinition($path, $auth_type, $params) {
+	public function getReportDefinition($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getReportsDefinition($path, $auth_type, $params) {
+	public function getReportsDefinition($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function createReport() {
 		throw new Exception('Method not implemented.');
 	}
-	public function reportCategories($path, $auth_type, $params) {
+	public function reportCategories($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -865,13 +965,13 @@ class Conditions extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getConditionTypes($path, $auth_type, $params) {
+	public function getConditionTypes($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getConditionStatuses($path, $auth_type, $params) {
+	public function getConditionStatuses($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
-	public function getConditionPriorities($path, $auth_type, $params) {
+	public function getConditionPriorities($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
@@ -885,7 +985,7 @@ class GisSerivceApp extends AccelaBase {
 	public function __construct($app_id, $app_secret, $access_token, $environment="Test", $agency=null) {
 		parent::__construct($app_id, $app_secret, $access_token, $environment, $agency);
 	}
-	public function getGisService($path, $auth_type, $params) {
+	public function getGisService($path, $auth_type, Array $params) {
 		return parent::sendRequest($path, $params, $auth_type, $debug=false, $exceptions=true);
 	}
 	public function __destruct() {
