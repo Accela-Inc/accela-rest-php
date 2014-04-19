@@ -61,7 +61,6 @@ class Authorize {
 	 * Make request for an access token.
 	 */
 	public function getAccessToken($code) {
-
 		$body = array(
 		    'grant_type' => 'authorization_code',
 		    'client_id'   => $this->app_id,
@@ -77,8 +76,16 @@ class Authorize {
 	/**
 	 * Refresh an existing access token.
 	 */
-	public function refreshAccessToken() {
-
+	public function refreshAccessToken($refresh_token) {
+		$body = array(
+		    'grant_type' => 'refresh_token',
+		    'client_id'   => $this->app_id,
+		    'client_secret' => $this->app_secret,
+		    'refresh_token' => $refresh_token);
+		$client = new Client();
+		$request = $client->post(self::ACCESS_TOKEN_ENDPOINT, array(), $body);
+		$request->setHeader('x-accela-appid', $this->app_id);
+		return $request->send();
 	}
 
 	/**
