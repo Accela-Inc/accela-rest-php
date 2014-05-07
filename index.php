@@ -6,11 +6,12 @@
 
 // Include required files.
 require 'config.php';
-require 'accela.php';
-require 'scopes.php';
+require 'src/Accela.php';
+require 'src/Scopes.php';
+require 'src/Authorize.php';
 
 // Set up scope list for authorization request.
-$scopes = setScope::$get_agency . '%20' . setScope::$get_agency_logo;
+$scopes = setScope::$get_agency . '%20' . setScope::$get_agency_logo  . '%20' . setScope::$get_owners;
 
 // Create a new Authorize object.
 $auth = new Authorize($app_id, $app_secret, $redirect_uri, $environment, $agency_name, $scopes);
