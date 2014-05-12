@@ -55,16 +55,23 @@ class AccelaBase {
 	/**
 	 * Method to send POST requests to Accela API.
 	 */ 
-	protected function sendPost() {}
+	protected function sendPost($path, $auth_type, $body, $debug=false, $exceptions=true) {
+		$request = $this->client->post($path, self::setAuthorizationHeaders($auth_type), 
+				['body' => $body], 
+				array('debug' => $debug, 'exceptions' => $excpetions)
+			);
+		$response = $request->send();
+		return $response->getBody();
+	}
+
 	/**
 	 * Method to send PUT requests to Accela API.
 	 */	
-
 	protected function sendPut() {}
+
 	/**
 	 * Method to send DELETE requests to Accela API.
 	 */
-
 	protected function sendDelete() {}
 
 	/**

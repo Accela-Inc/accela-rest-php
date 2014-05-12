@@ -1,6 +1,6 @@
 <?php
 
-// Include require files.
+// Include required files.
 require 'vendor/autoload.php';
 use Guzzle\Http\Client;
 
