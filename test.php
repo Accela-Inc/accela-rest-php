@@ -20,7 +20,7 @@ try {
 	$auth_type = AuthType::$AccessToken;
 
 	// Make API call and get JSON response.
-	$json = $owners->searchOwners($path, $auth_type, array('fullName' => 'Jones'));
+	$json = $owners->searchOwners($path, $auth_type, array('fullName' => 'Clyde'));
 	$response = json_decode($json);
 
 	// Loop over response and print out owner name.

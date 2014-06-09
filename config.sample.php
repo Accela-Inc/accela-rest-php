@@ -3,9 +3,9 @@
 // Enter your app credentials here.
 $app_id = '';
 $app_secret = '';
-$token = '';
+$token = ''; // Put token here after CivicID login.
 
 // Enter your app settings here.
 $redirect_uri = '';
-$environment = '';
+$environment = 'TEST';
 $agency_name = 'Islanton';
