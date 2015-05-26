@@ -10,7 +10,7 @@ use Guzzle\Http\Client;
  */ 
 class AccelaBase {
 
-	// Base endpoint for Accela API.
+	// Endpoints for Accela APIs.
 	const ENDPOINT = 'https://apis.accela.com/';
 
 	// The application ID (provisioned when app is created).
@@ -29,13 +29,14 @@ class AccelaBase {
 	/**
 	 * Class constructor.
 	 */
-	protected function __construct($app_id, $app_secret, $access_token, $environment, $agency) {
+	protected function __construct($app_id, $app_secret, $access_token, $environment, $agency, $endpoint=null) {
+		$api_endpoint = $endpoint == null ? self::ENDPOINT : $endpoint;
 		$this->app_id = $app_id;
 		$this->app_secret = $app_secret;
 		$this->access_token = $access_token;
 		$this->environment = $environment;
 		$this->agency - $agency;
-		$this->client = new Client(self::ENDPOINT);
+		$this->client = new Client($api_endpoint);
 	}
 
 	/**
@@ -73,6 +74,35 @@ class AccelaBase {
 	 * Method to send DELETE requests to Accela API.
 	 */
 	protected function sendDelete() {}
+
+	/**
+	* Method to obtain a CivicID.
+	*/
+	protected function getToken($username, $password, $scope, $path) {
+		$params = array(
+				'client_id' => $this->app_id,
+		        'client_secret' => $this->app_secret,
+		        'grant_type' => 'password',
+		        'username' => $username,
+		        'password' => $password,
+		        'scope' => $scope,
+		        'agency_name' => $this->agency,
+		        'environment' => $this->environment
+	        );
+		$request = $this->client->post($path, array('Content-Type' => 'application/x-www-form-urlencoded'), 
+				['body' => $params], 
+				array('debug' => $debug, 'exceptions' => $exceptions)
+			);
+		$response = $request->send();
+		return $response->getBody();
+	}
+
+	/**
+	* Method to refresh an existing CivicID.
+	*/
+	protected function refreshToken($refresh_token) {
+
+	}
 
 	/**
 	 * Class destructor.

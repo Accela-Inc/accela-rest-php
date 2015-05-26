@@ -10,6 +10,7 @@ include 'accela/Assessments.php';
 include 'accela/Assets.php';
 include 'accela/Conditions.php';
 include 'accela/Contacts.php';
+include 'accela/CivicID.php';
 include 'accela/Departments.php';
 include 'accela/Documents.php';
 include 'accela/GISSettings.php';
