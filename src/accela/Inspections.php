@@ -94,8 +94,8 @@ class Inspections extends AccelaBase {
 	public function updateInspection() {
 		throw new Exception('Method not implemented.');
 	}
-	public function uploadInspectionDocuments($path, $auth_type, $body, $debug=false, $exceptions=true) {
-		return parent::sendPost($path, $auth_type, $body, $debug, $exceptions);
+	public function uploadInspectionDocuments($path, $auth_type, $filename, $filepath, $debug=false, $exceptions=true) {
+		return parent::sendFormPost($path, $auth_type, $filename, $filepath, $debug, $exceptions);
 	}
 	public function createInspectionChecklists($path, $auth_type, $body, $debug=false, $exceptions=true) {
 		return parent::sendPost($path, $auth_type, $body, $debug, $exceptions);

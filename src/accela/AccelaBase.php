@@ -70,9 +70,12 @@ class AccelaBase {
 		return $response->getBody();
 	}
 
+	/**
+	 * Method to POST files via 'multipart/form-data'.
+	 */ 
 	protected function sendFormPost($path, $auth_type, $filename, $filepath, $debug=false, $exceptions=true) {
 		$request = $this->client->post($path, self::setAuthorizationHeaders($auth_type), 
-				array('form_files' => array('name'=>'test.png', 'contents' => fopen('/path/to/file', 'r'))), 
+				array('form_files' => array('name'=>$filename, 'contents' => fopen($filepath, 'r'))), 
 				array('debug' => $debug, 'exceptions' => $exceptions)
 			);
 		$response = $request->send();
