@@ -58,7 +58,21 @@ class AccelaBase {
 	 */ 
 	protected function sendPost($path, $auth_type, $body, $debug=false, $exceptions=true) {
 		$request = $this->client->post($path, self::setAuthorizationHeaders($auth_type), 
-				['body' => $body], 
+				['body' => 
+					[
+				        'field_name' => 'abc',
+				        'file_filed' => new PostFile('other_file', 'this is the content')
+				    ]
+				], 
+				array('debug' => $debug, 'exceptions' => $exceptions)
+			);
+		$response = $request->send();
+		return $response->getBody();
+	}
+
+	protected function sendFormPost($path, $auth_type, $filename, $filepath, $debug=false, $exceptions=true) {
+		$request = $this->client->post($path, self::setAuthorizationHeaders($auth_type), 
+				array('form_files' => array('name'=>'test.png', 'contents' => fopen('/path/to/file', 'r'))), 
 				array('debug' => $debug, 'exceptions' => $exceptions)
 			);
 		$response = $request->send();
