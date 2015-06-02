@@ -58,12 +58,7 @@ class AccelaBase {
 	 */ 
 	protected function sendPost($path, $auth_type, $body, $debug=false, $exceptions=true) {
 		$request = $this->client->post($path, self::setAuthorizationHeaders($auth_type), 
-				['body' => 
-					[
-				        'field_name' => 'abc',
-				        'file_filed' => new PostFile('other_file', 'this is the content')
-				    ]
-				], 
+				['body' => $body], 
 				array('debug' => $debug, 'exceptions' => $exceptions)
 			);
 		$response = $request->send();
