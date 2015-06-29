@@ -1,18 +1,14 @@
 <?php 
-
-// Include required files.
-require 'vendor/autoload.php';
-
-use Guzzle\Http\Client;
-
 /**
  * Base class for Accela API classes.
  */ 
 class AccelaBase {
 
-	// Endpoints for Accela APIs.
+	// Default endpoints for Accela APIs.
 	const ENDPOINT = 'https://apis.accela.com/';
 
+	// Endpoint for API calls.
+	private $api_endpoint;
 	// The application ID (provisioned when app is created).
 	private $app_id;
 	// The application secret (provisioned when app is created).
@@ -30,57 +26,76 @@ class AccelaBase {
 	 * Class constructor.
 	 */
 	protected function __construct($app_id, $app_secret, $access_token, $environment, $agency, $endpoint=null) {
-		$api_endpoint = $endpoint == null ? self::ENDPOINT : $endpoint;
+		$this->api_endpoint = $endpoint == null ? self::ENDPOINT : $endpoint;
 		$this->app_id = $app_id;
 		$this->app_secret = $app_secret;
 		$this->access_token = $access_token;
 		$this->environment = $environment;
-		$this->agency - $agency;
-		$this->client = new Client($api_endpoint);
+		$this->agency = $agency;
+		$this->client = curl_init();
+		curl_setopt($this->client, CURLOPT_RETURNTRANSFER, true);
 	}
 
 	/**
 	 * Method to send GET requests to Accela API.
 	 */
-	protected function sendRequest($path, Array $params=null, $auth_type, $debug=false, $exceptions=true) {
-		$request = $this->client->get($path, array(), 
-			array('headers' => self::setAuthorizationHeaders($auth_type), 
-				  'query' => self::escapeCharacters($params), 
-				  'debug' => $debug, 
-				  'exceptions' => $exceptions)
-			);
-		$response = $request->send();
-		return $response->getBody();
+	protected function sendRequest($path, Array $params=null, $auth_type) {
+		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
+		$headers = self::setAuthorizationHeaders($auth_type);
+		array_push($headers, 'Content-Type: application/json', 'Accept: application/json');
+		curl_setopt($this->client, CURLOPT_URL, $url);
+		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
+		return self::makeRequest();
 	}
 
 	/**
 	 * Method to send POST requests to Accela API.
 	 */ 
-	protected function sendPost($path, $auth_type, $body, $debug=false, $exceptions=true) {
-		$request = $this->client->post($path, self::setAuthorizationHeaders($auth_type), 
-				['body' => $body], 
-				array('debug' => $debug, 'exceptions' => $exceptions)
-			);
-		$response = $request->send();
-		return $response->getBody();
+	protected function sendPost($path, $auth_type, Array $params, $body) {
+		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
+		$post_body = $body ? json_encode($body) : json_encode(new stdClass());
+		$headers = self::setAuthorizationHeaders($auth_type);
+		array_push($headers, 'Content-Type: application/json', 'Accept: application/json', 'Content-Length: ' . strlen($post_body));
+		curl_setopt($this->client, CURLOPT_URL, $url);
+		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($this->client, CURLOPT_POST, true);
+		curl_setopt($this->client, CURLOPT_POSTFIELDS, $post_body);
+		return self::makeRequest();
 	}
 
 	/**
 	 * Method to POST files via 'multipart/form-data'.
 	 */ 
-	protected function sendFormPost($path, $auth_type, $filename, $filepath, $debug=false, $exceptions=true) {
-		$request = $this->client->post($path, [ self::setAuthorizationHeaders($auth_type), 
-					'multipart' => [
-					    [
-					        'name' => $filename,
-					        'contents' => fopen($filepath, 'r')
-					    ]
-					]
-				], 
-				array('debug' => $debug, 'exceptions' => $exceptions)
-			);
-		$response = $request->send();
-		return $response->getBody();
+	protected function sendFormPost($path, $auth_type, Array $params, $filename, $filetype, $filepath, $description) {
+
+		// Assemble URL
+		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
+		
+		// Set headers
+		$headers = self::setAuthorizationHeaders($auth_type);
+		$boundary = '----'.md5(time());
+		array_push($headers, 'Content-Type: multipart/form-data; boundary=' . $boundary, 'Accept: application/json');
+		
+		// Construct body
+		$fileInfo = array(array('serviceProviderCode'=>$this->agency,'fileName'=>$filename,'type'=>$filetype,'description'=>$description));
+		$eol = "\r\n";
+		$body = "--$boundary$eol";
+		$body .= "Content-Disposition: form-data; name=\"uploadedFile\"; filename=\"$filename\"$eol";
+		$body .= "Content-Type: $filetype$eol$eol";
+		$body .= file_get_contents($filepath).$eol;
+		$body .= "--$boundary$eol";
+		$body .= "Content-Disposition: form-data; name=\"fileInfo\"$eol$eol";
+		$body .= json_encode($fileInfo).$eol;
+		$body .= "--$boundary--$eol";
+
+		// Set cURL headers
+		curl_setopt($this->client, CURLOPT_URL, $url);
+		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($this->client, CURLOPT_POST, true);
+		curl_setopt($this->client, CURLOPT_POSTFIELDS, $body);
+
+		// Make API call
+		return self::makeRequest();
 	}
 
 	/**
@@ -94,62 +109,48 @@ class AccelaBase {
 	protected function sendDelete() {}
 
 	/**
-	* Method to obtain a CivicID.
-	*/
-	protected function getToken($username, $password, $scope, $path) {
-		$params = array(
-				'client_id' => $this->app_id,
-		        'client_secret' => $this->app_secret,
-		        'grant_type' => 'password',
-		        'username' => $username,
-		        'password' => $password,
-		        'scope' => $scope,
-		        'agency_name' => $this->agency,
-		        'environment' => $this->environment
-	        );
-		$request = $this->client->post($path, array('Content-Type' => 'application/x-www-form-urlencoded'), 
-				['body' => $params], 
-				array('debug' => $debug, 'exceptions' => $exceptions)
-			);
-		$response = $request->send();
-		return $response->getBody();
-	}
-
-	/**
-	* Method to refresh an existing CivicID.
-	*/
-	protected function refreshToken($refresh_token) {
-
-	}
-
-	/**
 	 * Class destructor.
 	 */
-	protected function __destruct() {}
+	protected function __destruct() {
+		curl_close($this->client);
+	}
+
+	private function makeRequest() {
+		$result = curl_exec($this->client);
+		$error = curl_error($this->client);
+		$curl_http_code = curl_getinfo($this->client, CURLINFO_HTTP_CODE);
+
+		if($result === false) {
+	    	throw new Exception('An error occurred: '.$error);
+		 } else {
+		 	if (substr($curl_http_code, 0, 2) != '20') {
+		     throw new Exception('An error occurred: http_code: '.$curl_http_code.' error:'.$result);
+		    }
+		  return json_decode($result);
+		 }
+	}
 
 	/**
 	 * Method to set authorization headers for API calls.
 	 */	
 	private function setAuthorizationHeaders($auth_type) {
 		$headers = array(
-			'Content-Type' => 'application/json',
-			'Accept' => 'application/json',
-			'x-accela-appid' => $this->app_id
+			'x-accela-appid: '. $this->app_id,
+			'x-accela-agency: ' . $this->agency
 		);
 
 		switch($auth_type) {
 			// Access token authorization required.
 			case 'AccessToken':
-				$headers['Authorization'] = $this->access_token;
-				$headers['x-accela-agency'] = $this->agency;
+				array_push($headers, 'Authorization: ' . $this->access_token);
 				break;
 			// App Credentials authorization required.
 			case 'AppCredentials':
-				$headers['x-accela-appsecret'] = $this->app_secret;
+				array_push($headers, 'x-accela-appsecret: ' . $this->app_secret);
 				break;
 			// No authorization required.
 			default:
-				$headers['x-accela-environment'] = $this->environment;
+				array_push($headers, 'x-accela-environment: ' . $this->environment);
 				break;
 		}
 

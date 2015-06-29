@@ -4,32 +4,32 @@
  * A simple script to test the Accela PHP class library.
  */
 
-include 'src/Accela.php';
+include 'src/Construct.php';
 include 'config.php';
 
-// Search owners by last name and write out the full name for each record returned.
 try {
 
-	// Create a new Owners object.
-	$owners = new Owners($app_id, $secret, $token);
+	// File to upload.
+	$fileName = 'smile.png';
+	$filePath = getcwd() . '/' . $fileName;
+	$fileType = 'image/png';
+	$fileDescription = 'A test doc';
 
-	// Set the path for the API method to be called.
-	$path = 'v3/owners';
+	$inspectionID = ''; // Enter an inpsection ID to test.
+	$params = array();
+	$path = '/v4/inspections/' . $inspectionID . '/documents';
 
-	// Set the authentication type.
-	$auth_type = AuthType::$AccessToken;
+	// Create new Inspections object.
+	$inspection = new Inspections($app_id, $app_secret, $token, $environment, $agency_name);
+	
+	// Upload new inspection doc
+	$response = $inspection->uploadInspectionDocuments($path, AuthType::$AccessToken, $params, $fileName, $fileType, $filePath, $description);
 
-	// Make API call and get JSON response.
-	$json = $owners->searchOwners($path, $auth_type, array('fullName' => 'Clyde'));
-	$response = json_decode($json);
-
-	// Loop over response and print out owner name.
-	foreach($response->owners as $owner) {
-		echo ucwords(strtolower($owner->fullName)) . "\n";
-	}
-	echo "\n";
+	// Vie response
+	var_dump($response);
 }
+
 catch(Exception $ex) {
- 	echo $ex->getMessage();
+	echo $ex->getMessage();
 }
 
