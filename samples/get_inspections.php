@@ -5,13 +5,14 @@ require '../src/Construct.php';
 // App, agency & environment settings.
 $app_id = '';
 $app_secret = ''; 
+$token = '';
 $environment = 'TEST';
 $agency = 'Islandton';
 
 try {
-	$rec = new Records($app_id, $app_secret, null, $environment, $agency);
-	$response = $rec->getRecords('/v4/records', AuthType::$NoAuth, array("limit" => 1));
-	echo json_encode($response); // To output JSON string.
+	$i = new Inspections($app_id, $app_secret, $token, $environment, $agency);
+	$params = array("scheduledDateFrom"=>"2014-01-01", "scheduledDateTo" => "2014-01-15", "limit" => 1);
+	$result = $i->simpleSearchInspection('/v4/inspections', AuthType::$AccessToken, $params, true);
 }
 catch(ConstructException $ex) {
 	$details = json_decode($ex->getMessage());
