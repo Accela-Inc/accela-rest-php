@@ -33,27 +33,17 @@ class AccelaBase {
 	 * Method to send GET requests to Accela API.
 	 */
 	protected function sendRequest($path, $auth_type, Array $params=null, $debug=null) {
-		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
-		$headers = self::setAuthorizationHeaders($auth_type);
-		array_push($headers, 'Content-Type: application/json', 'Accept: application/json');
-		curl_setopt($this->client, CURLOPT_URL, $url);
-		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
-		return self::makeRequest($debug);
+		return self::makeRequest($path, $auth_type, $params, null, $debug);
 	}
 
 	/**
 	 * Method to send POST requests to Accela API.
 	 */ 
 	protected function sendPost($path, $auth_type, Array $params, $body, $debug=null) {
-		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
 		$post_body = $body ? json_encode($body) : json_encode(new stdClass());
-		$headers = self::setAuthorizationHeaders($auth_type);
-		array_push($headers, 'Content-Type: application/json', 'Accept: application/json', 'Content-Length: ' . strlen($post_body));
-		curl_setopt($this->client, CURLOPT_URL, $url);
-		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($this->client, CURLOPT_POST, true);
 		curl_setopt($this->client, CURLOPT_POSTFIELDS, $post_body);
-		return self::makeRequest($debug);
+		return self::makeRequest($path, $auth_type, $params, null, $debug);
 	}
 
 	/**
@@ -61,8 +51,6 @@ class AccelaBase {
 	 */ 
 	protected function sendFormPost($path, $auth_type, Array $params, $filename, $filetype, $filepath, $description, $debug=null) {
 
-		// Assemble URL
-		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
 		// Set headers
 		$headers = self::setAuthorizationHeaders($auth_type);
 		$boundary = '----'.md5(time());
@@ -81,13 +69,9 @@ class AccelaBase {
 		$body .= "--$boundary--$eol";
 
 		// Set cURL headers
-		curl_setopt($this->client, CURLOPT_URL, $url);
-		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($this->client, CURLOPT_POST, true);
 		curl_setopt($this->client, CURLOPT_POSTFIELDS, $body);
-
-		// Make API call
-		return self::makeRequest($debug);
+		return self::makeRequest($path, $auth_type, $params, $headers, $debug);
 	}
 
 	// Method to send PUT requests to Accela API.	
@@ -95,13 +79,13 @@ class AccelaBase {
 		$put_body = $body ? json_encode($body) : json_encode(new stdClass());
 		curl_setopt($this->client, CURLOPT_CUSTOMREQUEST, 'PUT');
 		curl_setopt($this->client, CURLOPT_POSTFIELDS, $put_body);
-		return self::makeRequest($debug);
+		return self::makeRequest($path, $auth_type, $params, null, $debug);
 	}
 
 	// Method to send DELETE requests to Accela API.
 	protected function sendDelete($path, $auth_type, Array $params=null, $debug=null) {
 		curl_setopt($this->client, CURLOPT_CUSTOMREQUEST, 'DELETE');
-		return self::makeRequest($debug);
+		return self::makeRequest($path, $auth_type, $params, null, $debug);
 	}
 
 	/**
@@ -111,10 +95,20 @@ class AccelaBase {
 		curl_close($this->client);
 	}
 
-	private function makeRequest($debug) {
+	private function makeRequest($path, $auth_type, $params, $headerArray=null, $debug=null) {
+		@ $url = $this->api_endpoint . $path . '?' . self::escapeCharacters($params);
+		curl_setopt($this->client, CURLOPT_URL, $url);
+
+		if(empty($headerArray)) {
+			$headers = self::setAuthorizationHeaders($auth_type);
+			array_push($headers, 'Content-Type: application/json', 'Accept: application/json');
+		} else {
+			$headers = $headerArray;
+		}
+		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
+
 		$result = curl_exec($this->client);
 		$error = curl_error($this->client);
-
 		$curl_info = curl_getinfo($this->client);
 
 		if($debug) {
@@ -167,10 +161,18 @@ class AccelaBase {
 	/**
 	 * Method to escape special characters prior to API calls.
 	 */
-	private function escapeCharacters($text) {
+	private function escapeCharacters($params) {
 		$search = array('.','-','%','/','\\\\',':','*','\\','<','>','|','?',' ','&','#');
 		$replace = array('.0','.1','.2','.3','.4','.5','.6','.7','.8','.9','.a','.b','.c','.d','.e');
-		return str_replace($search, $replace, $text);
+		$new_params = array();
+		foreach($params as $key => $value) {
+			if(preg_match("/^(19|20)\d\d[-](0[1-9]|1[012])[-](0[1-9]|[12][0-9]|3[01])$/", $value)) {
+				$new_params[$key] = $value;
+			} else {
+				$new_params[$key] = str_replace($search, $replace, $value);
+			}
+		}
+		return http_build_query($new_params);
 	}
 
 }
