@@ -3,14 +3,14 @@
 require '../src/Construct.php';
 
 // App, agency & environment settings.
-$app_id = '';
-$app_secret = ''; 
+$app_id = '635502785397498905';
+$app_secret = 'f8529997f4b04d2e8f2bd082d944e31a'; 
 $environment = 'TEST';
 $agency = 'Islandton';
 
 try {
 	$rec = new Records($app_id, $app_secret, null, $environment, $agency);
-	$response = $rec->getRecords('/v4/records', AuthType::$NoAuth, array("limit" => 1));
+	$response = $rec->getRecords('/v4/records', AuthType::$NoAuth, array("limit" => 1), true);
 	echo json_encode($response); // To output JSON string.
 }
 catch(ConstructException $ex) {
