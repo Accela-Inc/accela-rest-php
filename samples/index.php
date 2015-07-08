@@ -2,19 +2,24 @@
 
 /**
  * Simple example showing how to use Accela CivicID for OAuth.
+ * Note - this sample needs to be tested.
  */
 
 // Include required files.
-require 'config.php';
-require 'src/Accela.php';
-require 'src/Scopes.php';
-require 'src/Authorize.php';
+require '../src/Construct.php';
+require '../src/Scopes.php';
+require '../src/Authorize.php';
 
-// Set up scope list for authorization request.
-$scopes = setScope::$get_agency . '%20' . setScope::$get_agency_logo  . '%20' . setScope::$get_owners;
+// App, agency & environment settings.
+$app_id = '';
+$app_secret = ''; 
+$token = '';
+$environment = 'TEST';
+$agency = 'Islandton';
+$redirect_uri = '';
 
 // Create a new Authorize object.
-$auth = new Authorize($app_id, $app_secret, $redirect_uri, $environment, $agency_name, $scopes);
+$auth = new Authorize($app_id, $app_secret, $environment, $agency, $scope, $redirect_uri);
 
 // If first visit, redirect to CivicID login.
 if(!$_GET) {
@@ -30,11 +35,6 @@ else {
 	$auth_object = json_decode($response->getBody());
 	$token = $auth_object->access_token;
 
-	// Make a request with access tioken.
-	$agency = new Agencies($app_id, $app_secret, $token);
-	$path = 'v3/agencies/' . $agency_name;
-
-	// Print out response from Construct API.
-	echo $agency->getAgency($path, AuthType::$AccessToken, array());
+	echo $token;
 
 }

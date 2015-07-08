@@ -4,23 +4,16 @@
  */ 
 class AccelaBase {
 
-	// Default endpoints for Accela APIs.
+	// Default endpoints for Accela APIs. Optionally modifiable in class constructor.
 	const ENDPOINT = 'https://apis.accela.com/';
 
-	// Endpoint for API calls.
-	private $api_endpoint;
-	// The application ID (provisioned when app is created).
-	private $app_id;
-	// The application secret (provisioned when app is created).
-	private $app_secret;
-	// The access token for making calls to the Accela API.
-	private $access_token;
-	// The environment in which the app is running.
-	private $environment;
-	// The name of the agency.
-	private $agency;
-	// HTTP client used to make API calls.
-	private $client;
+	private $api_endpoint; // Endpoint for API calls.
+	private $app_id; // The application ID (provisioned when app is created).
+	private $app_secret; // The application secret (provisioned when app is created).
+	private $access_token; // The access token for making calls to the Accela API.
+	private $environment; // The environment in which the app is running.
+	private $agency; // The name of the agency.
+	private $client; // cURL client used to make API calls.
 
 	/**
 	 * Class constructor.
@@ -39,19 +32,19 @@ class AccelaBase {
 	/**
 	 * Method to send GET requests to Accela API.
 	 */
-	protected function sendRequest($path, Array $params=null, $auth_type) {
+	protected function sendRequest($path, $auth_type, Array $params=null, $debug=null) {
 		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
 		$headers = self::setAuthorizationHeaders($auth_type);
 		array_push($headers, 'Content-Type: application/json', 'Accept: application/json');
 		curl_setopt($this->client, CURLOPT_URL, $url);
 		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
-		return self::makeRequest();
+		return self::makeRequest($debug);
 	}
 
 	/**
 	 * Method to send POST requests to Accela API.
 	 */ 
-	protected function sendPost($path, $auth_type, Array $params, $body) {
+	protected function sendPost($path, $auth_type, Array $params, $body, $debug=null) {
 		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
 		$post_body = $body ? json_encode($body) : json_encode(new stdClass());
 		$headers = self::setAuthorizationHeaders($auth_type);
@@ -60,17 +53,16 @@ class AccelaBase {
 		curl_setopt($this->client, CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($this->client, CURLOPT_POST, true);
 		curl_setopt($this->client, CURLOPT_POSTFIELDS, $post_body);
-		return self::makeRequest();
+		return self::makeRequest($debug);
 	}
 
 	/**
 	 * Method to POST files via 'multipart/form-data'.
 	 */ 
-	protected function sendFormPost($path, $auth_type, Array $params, $filename, $filetype, $filepath, $description) {
+	protected function sendFormPost($path, $auth_type, Array $params, $filename, $filetype, $filepath, $description, $debug=null) {
 
 		// Assemble URL
 		$url = $this->api_endpoint . $path . '?' . http_build_query(self::escapeCharacters($params));
-		
 		// Set headers
 		$headers = self::setAuthorizationHeaders($auth_type);
 		$boundary = '----'.md5(time());
@@ -95,18 +87,22 @@ class AccelaBase {
 		curl_setopt($this->client, CURLOPT_POSTFIELDS, $body);
 
 		// Make API call
-		return self::makeRequest();
+		return self::makeRequest($debug);
 	}
 
-	/**
-	 * Method to send PUT requests to Accela API.
-	 */	
-	protected function sendPut() {}
+	// Method to send PUT requests to Accela API.	
+	protected function sendPut($path, $auth_type, Array $params=null, $body, $debug=null) {
+		$put_body = $body ? json_encode($body) : json_encode(new stdClass());
+		curl_setopt($this->client, CURLOPT_CUSTOMREQUEST, 'PUT');
+		curl_setopt($this->client, CURLOPT_POSTFIELDS, $put_body);
+		return self::makeRequest($debug);
+	}
 
-	/**
-	 * Method to send DELETE requests to Accela API.
-	 */
-	protected function sendDelete() {}
+	// Method to send DELETE requests to Accela API.
+	protected function sendDelete($path, $auth_type, Array $params=null, $debug=null) {
+		curl_setopt($this->client, CURLOPT_CUSTOMREQUEST, 'DELETE');
+		return self::makeRequest($debug);
+	}
 
 	/**
 	 * Class destructor.
@@ -115,16 +111,27 @@ class AccelaBase {
 		curl_close($this->client);
 	}
 
-	private function makeRequest() {
+	private function makeRequest($debug) {
 		$result = curl_exec($this->client);
 		$error = curl_error($this->client);
-		$curl_http_code = curl_getinfo($this->client, CURLINFO_HTTP_CODE);
+
+		$curl_info = curl_getinfo($this->client);
+
+		if($debug) {
+			syslog(LOG_WARNING, json_encode($curl_info));
+		}
+
+		$curl_http_code = $curl_info['http_code'];
 
 		if($result === false) {
-	    	throw new Exception('An error occurred: '.$error);
+	    	throw new Exception($error, $curl_http_code);
 		 } else {
 		 	if (substr($curl_http_code, 0, 2) != '20') {
-		     throw new Exception('An error occurred: http_code: '.$curl_http_code.' error:'.$result);
+		 		if(json_decode($result)) {
+		 			throw new ConstructException($result, $curl_http_code);		
+		 		} else {
+		 			throw new Exception($result, $curl_http_code);
+		 		}
 		    }
 		  return json_decode($result);
 		 }
@@ -166,6 +173,15 @@ class AccelaBase {
 		return str_replace($search, $replace, $text);
 	}
 
+}
+
+/**
+ * Class for wrapping exceptions.
+ */
+class ConstructException extends Exception {
+	public function __construct($details, $code) {
+		parent::__construct($details, $code);
+	}
 }
 
 /**
