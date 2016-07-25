@@ -85,8 +85,8 @@ class Inspections extends AccelaBase {
 	public function rescheduleInspection() {
 		throw new Exception('Method not implemented.');
 	}
-	public function resultInspection() {
-		throw new Exception('Method not implemented.');
+	public function resultInspection($path, $auth_type, Array $params=null, $body, $debug=null, $exceptions=true) {
+		return parent::sendPut($path, $auth_type, $params, $body, $debug, $exceptions);
 	}
 	public function searchInspections($path, $auth_type, Array $params, $body, $debug=false, $exceptions=true) {
 		return parent::sendPost($path, $auth_type, $params, $body, $debug);
